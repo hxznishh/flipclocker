@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlipClocker by Kajol</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons for clean UI -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    :root {
+      --bg-color: #0b0b0c;
+      --card-bg: #141416;
+      --card-bg-darker: #0d0d0e;
+      --text-color: #f3f3f5;
+      --divider-color: #000000;
+      --accent-color: #3b82f6; 
+      --glow-color: rgba(255, 255, 255, 0.03);
+      --clock-scale: 1.2;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      /* Use a highly reliable, bold sans-serif system stack to prevent external font loading failures */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      user-select: none;
+      transition: background-color 0.5s ease;
+    }
+
+    /* Ambient Desk Glow behind the clock */
+    .ambient-glow {
+      position: absolute;
+      width: 65vw;
+      height: 45vh;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0) 70%);
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Outer Clock Scaling wrapper to prevent viewport clipping */
+    .clock-scale-container {
+      transform: scale(var(--clock-scale));
+      transform-origin: center center;
+      transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+
+    /* 3D Flip Card Styles */
+    .flip-card {
+      position: relative;
+      width: 140px;
+      height: 200px;
+      perspective: 800px;
+      border-radius: 16px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.8), 
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      background-color: var(--card-bg);
+    }
+
+    @media (max-width: 640px) {
+      .flip-card {
+        width: 80px;
+        height: 120px;
+        border-radius: 10px;
+      }
+    }
+
+    .card-half {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      overflow: hidden;
+      backface-visibility: hidden;
+      display: flex;
+      justify-content: center;
+      background-color: var(--card-bg);
+    }
+
+    /* Top Half */
+    .card-top {
+      top: 0;
+      align-items: flex-start;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.45);
+    }
+    
+    .card-top .digit-text {
+      /* Perfect vertically centered positioning alignment */
+      transform: translateY(22%);
+    }
+
+    /* Bottom Half */
+    .card-bottom {
+      bottom: 0;
+      align-items: flex-end;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      background-color: var(--card-bg-darker);
+    }
+
+    .card-bottom .digit-text {
+      transform: translateY(-28%);
+    }
+
+    @media (max-width: 640px) {
+      .card-top .digit-text { transform: translateY(20%); }
+      .card-bottom .digit-text { transform: translateY(-30%); }
+    }
+
+    /* Flipping Dynamic Elements */
+    .card-flip {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      overflow: hidden;
+      backface-visibility: hidden;
+      transform-origin: bottom center;
+      z-index: 5;
+      display: flex;
+      justify-content: center;
+      background-color: var(--card-bg);
+      transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .card-flip-top {
+      top: 0;
+      align-items: flex-start;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.45);
+    }
+    .card-flip-top .digit-text {
+      transform: translateY(22%);
+    }
+
+    .card-flip-bottom {
+      top: 50%;
+      height: 50%;
+      align-items: flex-end;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      transform-origin: top center;
+      transform: rotateX(90deg);
+      background-color: var(--card-bg-darker);
+    }
+    .card-flip-bottom .digit-text {
+      transform: translateY(-28%);
+    }
+
+    @media (max-width: 640px) {
+      .card-flip-top .digit-text { transform: translateY(20%); }
+      .card-flip-bottom .digit-text { transform: translateY(-30%); }
+    }
+
+    /* Flip animations classes */
+    .flip-active-top {
+      animation: flipTop 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+    .flip-active-bottom {
+      animation: flipBottom 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    @keyframes flipTop {
+      0% { transform: rotateX(0deg); }
+      100% { transform: rotateX(-90deg); }
+    }
+
+    @keyframes flipBottom {
+      0% { transform: rotateX(90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    /* Digit numbers styling: geometric sans-serif center aligned */
+    .digit-text {
+      font-size: 130px;
+      font-weight: 800;
+      color: var(--text-color);
+      line-height: 1;
+      letter-spacing: -2px;
+      text-align: center;
+      width: 100%;
+      display: block;
+      text-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    }
+
+    @media (max-width: 640px) {
+      .digit-text {
+        font-size: 75px;
+      }
+    }
+
+    /* Physical split card visual overlay hinge */
+    .hinge-line {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background-color: rgba(0, 0, 0, 0.9);
+      z-index: 10;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    /* Split hinge metal pins on side of each card */
+    .hinge-pin {
+      position: absolute;
+      top: 50%;
+      width: 5px;
+      height: 10px;
+      background: #1f1f22;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1px;
+      z-index: 11;
+      transform: translateY(-50%);
+    }
+    .hinge-pin-left { left: -2px; }
+    .hinge-pin-right { right: -2px; }
+
+    /* Pulsing colon separator */
+    .pulse-separator {
+      font-size: 72px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.35);
+      animation: pulseGlow 1s infinite alternate;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+      padding: 0 8px;
+    }
+
+    @media (max-width: 640px) {
+      .pulse-separator {
+        font-size: 32px;
+        gap: 8px;
+        padding: 0 2px;
+      }
+    }
+
+    .separator-dot {
+      width: 12px;
+      height: 12px;
+      background-color: var(--text-color);
+      border-radius: 50%;
+      opacity: 0.85;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+    }
+
+    @media (max-width: 640px) {
+      .separator-dot {
+        width: 6px;
+        height: 6px;
+      }
+    }
+
+    @keyframes pulseGlow {
+      0% { opacity: 0.2; }
+      100% { opacity: 0.9; }
+    }
+
+    /* Auto-hide settings controls for mouse idle in Fullscreen */
+    .hide-controls {
+      opacity: 0 !important;
+      pointer-events: none;
+      transition: opacity 0.8s ease;
+    }
+
+    /* Hide element class */
+    .hidden-mode {
+      display: none !important;
+    }
+
+    /* Active Tab indicator styles */
+    .tab-btn.active {
+      color: #ffffff;
+      background-color: #1c1c1f;
+      border-color: #2e2e33;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between p-6 relative select-none">
+
+  <!-- Ambient Light Back-Glow -->
+  <div class="ambient-glow" id="backglow"></div>
+
+  <!-- Top Header Bar (Hidden entirely when screen is fullscreen/zen) -->
+  <header id="top-header" class="w-full flex flex-col md:flex-row gap-4 justify-between items-center z-20 transition-opacity duration-300">
+    
+    <!-- Branding logo / Date indicators -->
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-[#141416] border border-neutral-800 flex items-center justify-center text-zinc-300 shadow-md">
+        <i data-lucide="clock" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold tracking-wider text-zinc-100 uppercase">FlipClocker</h1>
+        <p class="text-xs text-zinc-500 font-mono tracking-tight" id="calendar-text">Sat, May 23</p>
+      </div>
+    </div>
+
+    <!-- Restored Interactive Mode Navigation Tabs -->
+    <nav class="flex items-center bg-[#101012] p-1 rounded-xl border border-neutral-800">
+      <button onclick="switchMode('clock')" class="tab-btn active px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 border border-transparent transition flex items-center gap-2" id="tab-clock">
+        <i data-lucide="clock" class="w-3.5 h-3.5"></i> Clock
+      </button>
+      <button onclick="switchMode('stopwatch')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 border border-transparent transition flex items-center gap-2" id="tab-stopwatch">
+        <i data-lucide="timer" class="w-3.5 h-3.5"></i> Stopwatch
+      </button>
+      <button onclick="switchMode('timer')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 border border-transparent transition flex items-center gap-2" id="tab-timer">
+        <i data-lucide="hourglass" class="w-3.5 h-3.5"></i> Timer
+      </button>
+      <button onclick="switchMode('pomodoro')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 border border-transparent transition flex items-center gap-2" id="tab-pomodoro">
+        <i data-lucide="focus" class="w-3.5 h-3.5"></i> Pomodoro
+      </button>
+    </nav>
+
+    <!-- Quick action layout buttons -->
+    <div class="flex items-center gap-2">
+      <button onclick="toggleAudio()" id="audio-toggle" class="p-2.5 rounded-xl bg-[#141416] border border-neutral-800 text-zinc-400 hover:text-white hover:border-neutral-700 transition shadow-md" title="Mute/Unmute Audio Clacks">
+        <i data-lucide="volume-2" class="w-5 h-5" id="audio-icon"></i>
+      </button>
+      <button onclick="openSettings()" class="p-2.5 rounded-xl bg-[#141416] border border-neutral-800 text-zinc-400 hover:text-white hover:border-neutral-700 transition shadow-md" title="Display Settings">
+        <i data-lucide="sliders" class="w-5 h-5"></i>
+      </button>
+      <button onclick="triggerFullscreen()" class="p-2.5 rounded-xl bg-blue-600 border border-blue-500 text-white hover:bg-blue-500 transition shadow-md" title="Go Fullscreen (F)">
+        <i data-lucide="maximize" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Display Canvas -->
+  <main class="flex-grow w-full flex flex-col items-center justify-center relative overflow-hidden">
+    
+    <!-- Central scalable clock system -->
+    <div class="clock-scale-container" id="clock-wrapper">
+      <div class="flex items-center gap-2 sm:gap-4 md:gap-6" id="clock-elements">
+        
+        <!-- Hours / Minutes tens & ones columns -->
+        <!-- Hours Tens / Stopwatch Minutes / Timer Hours Tens -->
+        <div class="flip-card" id="h-tens">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+        
+        <!-- Hours Ones / Stopwatch Seconds / Timer Hours Ones -->
+        <div class="flip-card" id="h-ones">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+
+        <!-- Colon Dot Divider 1 -->
+        <div class="pulse-separator" id="sep-1">
+          <div class="separator-dot"></div>
+          <div class="separator-dot"></div>
+        </div>
+
+        <!-- Minutes Tens -->
+        <div class="flip-card" id="m-tens">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+
+        <!-- Minutes Ones -->
+        <div class="flip-card" id="m-ones">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+
+        <!-- Colon Dot Divider 2 -->
+        <div class="pulse-separator seconds-element" id="sep-2">
+          <div class="separator-dot"></div>
+          <div class="separator-dot"></div>
+        </div>
+
+        <!-- Seconds Tens / Stopwatch Centiseconds -->
+        <div class="flip-card seconds-element" id="s-tens">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+
+        <!-- Seconds Ones / Stopwatch Centiseconds -->
+        <div class="flip-card seconds-element" id="s-ones">
+          <div class="card-half card-top"><span class="digit-text">0</span></div>
+          <div class="card-half card-bottom"><span class="digit-text">0</span></div>
+          <div class="hinge-line"></div>
+          <div class="hinge-pin hinge-pin-left"></div>
+          <div class="hinge-pin hinge-pin-right"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Dynamic tactile actions buttons block for non-clock modes (Stopwatch, Timer, Pomodoro) -->
+    <div id="interactive-controls" class="mt-8 z-20 flex gap-4 transition-all duration-300 opacity-0 pointer-events-none scale-95 h-0 overflow-hidden">
+      <!-- Buttons are generated dynamically by current controller selection -->
+    </div>
+
+  </main>
+
+  <!-- Clean Floating Controller Bar for Fullscreen Escape (Auto-hides on idle) -->
+  <div id="fullscreen-esc-tip" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900/90 backdrop-blur-md border border-neutral-800 px-4 py-2 rounded-full text-xs text-neutral-400 tracking-wider flex items-center gap-3 transition-all duration-300 shadow-2xl opacity-0 pointer-events-none z-30">
+    <span id="zen-indicator">Zen Mode Active</span>
+    <span class="w-px h-3 bg-neutral-800"></span>
+    <button onclick="exitFullscreen()" class="text-blue-400 hover:text-blue-300 font-semibold uppercase tracking-wider text-[10px]">Exit Fullscreen</button>
+  </div>
+
+  <!-- Settings Panel Drawer Overlay -->
+  <div id="settings-drawer" class="fixed inset-y-0 right-0 w-80 sm:w-96 bg-[#121214] border-l border-neutral-800 p-6 shadow-2xl transform translate-x-full transition-transform duration-300 cubic-bezier(0.25, 1, 0.5, 1) z-50 flex flex-col justify-between">
+    <div>
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-lg font-bold tracking-wider uppercase text-zinc-100 flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-5 h-5 text-blue-500"></i>
+          Display Controls
+        </h2>
+        <button onclick="closeSettings()" class="text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-neutral-900 transition">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Presets and Layout selector -->
+      <div class="space-y-6">
+        
+        <!-- Screen Size Presets (User's request) -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-3">Display Screen Presets</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="applyPreset('mobile')" id="preset-mobile" class="py-2.5 px-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-zinc-300 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition">
+              <i data-lucide="smartphone" class="w-4 h-4"></i>
+              Mobile
+            </button>
+            <button onclick="applyPreset('laptop')" id="preset-laptop" class="py-2.5 px-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-zinc-300 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition">
+              <i data-lucide="laptop" class="w-4 h-4"></i>
+              Laptop
+            </button>
+            <button onclick="applyPreset('monitor')" id="preset-monitor" class="py-2.5 px-3 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition">
+              <i data-lucide="monitor" class="w-4 h-4"></i>
+              Monitor
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Sizing Slider -->
+        <div class="bg-neutral-900/60 p-4 rounded-2xl border border-neutral-900 space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Fine Scale Tuning</span>
+            <span id="scale-indicator" class="text-xs font-mono text-blue-500 font-bold">120%</span>
+          </div>
+          <input type="range" id="size-slider" min="40" max="180" value="120" oninput="handleSizeSlider(this.value)" class="w-full accent-blue-500 bg-neutral-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+          <p class="text-[10px] text-zinc-500 leading-normal">
+            Drag the slider to adjust overall scale. Ensures elements never stretch or clip past screen boundaries.
+          </p>
+        </div>
+
+        <!-- Clock view toggles -->
+        <div class="space-y-4 pt-2">
+          <div class="flex justify-between items-center py-2 border-b border-neutral-900" id="setting-seconds-row">
+            <div>
+              <span class="text-sm font-medium text-zinc-200 block">Show Seconds</span>
+              <span class="text-xs text-zinc-500">Enable clean minimal 4-digit view</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-seconds" checked onchange="toggleSecondsVisibility()" class="sr-only peer">
+              <div class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center py-2 border-b border-neutral-900" id="setting-format-row">
+            <div>
+              <span class="text-sm font-medium text-zinc-200 block">24-Hour Clock</span>
+              <span class="text-xs text-zinc-500">Switch from standard 12H system</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-24h" onchange="toggleTimeFormat()" class="sr-only peer">
+              <div class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center py-2">
+            <div>
+              <span class="text-sm font-medium text-zinc-200 block">Ambient Desk Backglow</span>
+              <span class="text-xs text-zinc-500">Simulate desk backlight reflection</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-glow" checked onchange="toggleGlowLight()" class="sr-only peer">
+              <div class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Quick action buttons in settings -->
+    <div class="space-y-3 pt-6 border-t border-neutral-900">
+      <button onclick="triggerFullscreen()" class="w-full py-3 px-4 bg-zinc-900 hover:bg-neutral-800 text-white rounded-xl border border-neutral-800 text-sm font-medium transition flex items-center justify-center gap-2">
+        <i data-lucide="maximize" class="w-4 h-4"></i> Enter Fullscreen Zen
+      </button>
+      <p class="text-[10px] text-center text-zinc-600">Double click background anywhere to enter Zen Fullscreen</p>
+    </div>
+  </div>
+
+  <!-- Settings backdrop block out click -->
+  <div id="settings-backdrop" onclick="closeSettings()" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 hidden transition-opacity duration-300 opacity-0"></div>
+
+  <!-- Dynamic Logic Program -->
+  <script>
+    // System Config state
+    const state = {
+      mode: 'clock', // clock, stopwatch, timer, pomodoro
+      is24H: false,
+      showSeconds: true,
+      scale: 1.2,
+      soundMuted: false,
+      backlightOn: true,
+      isFullscreen: false,
+      activePreset: 'monitor'
+    };
+
+    // Card Digits tracking
+    let prevDigits = {
+      hTens: '', hOnes: '',
+      mTens: '', mOnes: '',
+      sTens: '', sOnes: ''
+    };
+
+    // Sub-engine states
+    const stopwatchState = {
+      timerId: null,
+      elapsedTime: 0, // milliseconds
+      running: false
+    };
+
+    const timerState = {
+      timerId: null,
+      targetTime: 0, // total seconds to countdown
+      remainingTime: 0,
+      running: false,
+      inputTime: 600 // default 10 mins
+    };
+
+    const pomodoroState = {
+      timerId: null,
+      mode: 'work', // work, shortBreak, longBreak
+      remainingTime: 1500, // default 25 mins
+      running: false
+    };
+
+    // Web Audio Synthesizer: Procedural mechanical click sound
+    let audioCtx = null;
+    function playClackSound() {
+      if (state.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(15, audioCtx.currentTime + 0.04);
+
+        filter.type = 'bandpass';
+        filter.frequency.value = 1000;
+        filter.Q.value = 3.0;
+
+        gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + 0.003);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.035);
+
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.04);
+      } catch (err) {
+        console.warn("Audio Context init stalled", err);
+      }
+    }
+
+    // Audio Toggle Handler
+    function toggleAudio() {
+      state.soundMuted = !state.soundMuted;
+      const icon = document.getElementById('audio-icon');
+      if (state.soundMuted) {
+        icon.setAttribute('data-lucide', 'volume-x');
+        document.getElementById('audio-toggle').classList.add('opacity-60');
+      } else {
+        icon.setAttribute('data-lucide', 'volume-2');
+        document.getElementById('audio-toggle').classList.remove('opacity-60');
+        playClackSound();
+      }
+      lucide.createIcons();
+    }
+
+    // 3D Flip Execution Core Functionality
+    function animateCard(cardId, newValue) {
+      const card = document.getElementById(cardId);
+      if (!card) return;
+
+      const currentTop = card.querySelector('.card-top .digit-text');
+      const currentBottom = card.querySelector('.card-bottom .digit-text');
+      
+      // Prevent unnecessary duplicate render calls
+      if (currentTop.textContent === newValue) return;
+
+      playClackSound();
+
+      // Clear older flipping fragments
+      const existingFlips = card.querySelectorAll('.card-flip');
+      existingFlips.forEach(el => el.remove());
+
+      // Create new flip structure
+      const flipTop = document.createElement('div');
+      flipTop.className = 'card-flip card-flip-top';
+      flipTop.innerHTML = `<span class="digit-text">${currentTop.textContent}</span>`;
+
+      const flipBottom = document.createElement('div');
+      flipBottom.className = 'card-flip card-flip-bottom';
+      flipBottom.innerHTML = `<span class="digit-text">${newValue}</span>`;
+
+      card.appendChild(flipTop);
+      card.appendChild(flipBottom);
+
+      // Force immediate hidden update to the top half
+      currentTop.textContent = newValue;
+      void flipTop.offsetWidth; // force reflow
+
+      // Trigger standard animations
+      flipTop.classList.add('flip-active-top');
+      flipBottom.classList.add('flip-active-bottom');
+
+      setTimeout(() => {
+        currentBottom.textContent = newValue;
+        flipTop.remove();
+        flipBottom.remove();
+      }, 550);
+    }
+
+    // Switch Display Modes
+    function switchMode(newMode) {
+      // Clear active interval timers across sub-engines
+      clearInterval(stopwatchState.timerId);
+      clearInterval(timerState.timerId);
+      clearInterval(pomodoroState.timerId);
+
+      stopwatchState.running = false;
+      timerState.running = false;
+      pomodoroState.running = false;
+
+      state.mode = newMode;
+
+      // Update Tab CSS styles
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`tab-${newMode}`).classList.add('active');
+
+      // Update active controls section
+      renderControls();
+
+      // Clear past digits trackers to enforce full deck reshuffle
+      prevDigits = { hTens: '', hOnes: '', mTens: '', mOnes: '', sTens: '', sOnes: '' };
+
+      // Set visibility rows according to context
+      const secondsSetting = document.getElementById('setting-seconds-row');
+      const formatSetting = document.getElementById('setting-format-row');
+
+      if (newMode === 'clock') {
+        secondsSetting.classList.remove('hidden-mode');
+        formatSetting.classList.remove('hidden-mode');
+        toggleSecondsVisibility(); // restore seconds state preference
+        updateClock();
+      } else {
+        secondsSetting.classList.add('hidden-mode');
+        formatSetting.classList.add('hidden-mode');
+        
+        // Force fully expanded layout configurations for Timer and Stopwatch modules
+        const secElements = document.querySelectorAll('.seconds-element');
+        secElements.forEach(el => el.classList.remove('hidden-mode'));
+
+        if (newMode === 'stopwatch') {
+          updateStopwatchDisplay();
+        } else if (newMode === 'timer') {
+          updateTimerDisplay();
+        } else if (newMode === 'pomodoro') {
+          updatePomodoroDisplay();
+        }
+      }
+    }
+
+    // Renders custom control buttons under the main visualizer cards
+    function renderControls() {
+      const controlsDiv = document.getElementById('interactive-controls');
+      
+      if (state.mode === 'clock') {
+        controlsDiv.classList.add('opacity-0', 'pointer-events-none', 'scale-95', 'h-0');
+        controlsDiv.classList.remove('opacity-100', 'scale-100', 'h-16');
+        return;
+      }
+
+      controlsDiv.classList.remove('opacity-0', 'pointer-events-none', 'scale-95', 'h-0');
+      controlsDiv.classList.add('opacity-100', 'scale-100', 'h-16');
+
+      let html = '';
+
+      if (state.mode === 'stopwatch') {
+        const isRunning = stopwatchState.running;
+        html = `
+          <button onclick="toggleStopwatch()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="${isRunning ? 'pause' : 'play'}" class="w-4 h-4"></i> ${isRunning ? 'Pause' : 'Start'}
+          </button>
+          <button onclick="resetStopwatch()" class="px-6 py-3 bg-[#141416] hover:bg-[#1f1f23] text-zinc-300 rounded-xl border border-neutral-800 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+          </button>
+        `;
+      } else if (state.mode === 'timer') {
+        const isRunning = timerState.running;
+        html = `
+          <button onclick="toggleTimer()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="${isRunning ? 'pause' : 'play'}" class="w-4 h-4"></i> ${isRunning ? 'Pause' : 'Start'}
+          </button>
+          <button onclick="adjustTimerSettings()" class="px-6 py-3 bg-[#141416] hover:bg-[#1f1f23] text-zinc-300 rounded-xl border border-neutral-800 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="hourglass" class="w-4 h-4"></i> Adjust Setup
+          </button>
+          <button onclick="resetTimer()" class="px-6 py-3 bg-[#141416] hover:bg-[#1f1f23] text-zinc-300 rounded-xl border border-neutral-800 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+          </button>
+        `;
+      } else if (state.mode === 'pomodoro') {
+        const isRunning = pomodoroState.running;
+        const currentPomoMode = pomodoroState.mode;
+        html = `
+          <div class="flex items-center gap-2 bg-[#101012] p-1.5 rounded-xl border border-neutral-800 mr-2">
+            <button onclick="setPomodoroInterval('work')" class="px-3 py-1.5 rounded-lg text-xs font-medium ${currentPomoMode === 'work' ? 'bg-red-950/40 text-red-400 border border-red-900/40' : 'text-zinc-500 hover:text-zinc-300'} transition">Work</button>
+            <button onclick="setPomodoroInterval('shortBreak')" class="px-3 py-1.5 rounded-lg text-xs font-medium ${currentPomoMode === 'shortBreak' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/40' : 'text-zinc-500 hover:text-zinc-300'} transition">Break</button>
+            <button onclick="setPomodoroInterval('longBreak')" class="px-3 py-1.5 rounded-lg text-xs font-medium ${currentPomoMode === 'longBreak' ? 'bg-indigo-950/40 text-indigo-400 border border-indigo-900/40' : 'text-zinc-500 hover:text-zinc-300'} transition">Long Rest</button>
+          </div>
+          <button onclick="togglePomodoro()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="${isRunning ? 'pause' : 'play'}" class="w-4 h-4"></i> ${isRunning ? 'Pause' : 'Start'}
+          </button>
+          <button onclick="resetPomodoro()" class="px-6 py-3 bg-[#141416] hover:bg-[#1f1f23] text-zinc-300 rounded-xl border border-neutral-800 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition shadow-md">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+          </button>
+        `;
+      }
+
+      controlsDiv.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    /* =========================================================================
+       SUB-ENGINE 1: REAL-TIME CLOCK
+       ========================================================================= */
+    function updateClock() {
+      if (state.mode !== 'clock') return;
+
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+
+      if (!state.is24H) {
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+      }
+
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const sStr = String(seconds).padStart(2, '0');
+
+      const digits = {
+        hTens: hStr[0], hOnes: hStr[1],
+        mTens: mStr[0], mOnes: mStr[1],
+        sTens: sStr[0], sOnes: sStr[1]
+      };
+
+      if (digits.hTens !== prevDigits.hTens) animateCard('h-tens', digits.hTens);
+      if (digits.hOnes !== prevDigits.hOnes) animateCard('h-ones', digits.hOnes);
+      if (digits.mTens !== prevDigits.mTens) animateCard('m-tens', digits.mTens);
+      if (digits.mOnes !== prevDigits.mOnes) animateCard('m-ones', digits.mOnes);
+      
+      if (state.showSeconds) {
+        if (digits.sTens !== prevDigits.sTens) animateCard('s-tens', digits.sTens);
+        if (digits.sOnes !== prevDigits.sOnes) animateCard('s-ones', digits.sOnes);
+      }
+
+      prevDigits = digits;
+
+      // Update Top Calendar Subtitle
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      document.getElementById('calendar-text').textContent = `${days[now.getDay()]} , ${months[now.getMonth()]} ${now.getDate()}`;
+    }
+
+    /* =========================================================================
+       SUB-ENGINE 2: STOPWATCH MODULE
+       ========================================================================= */
+    function toggleStopwatch() {
+      stopwatchState.running = !stopwatchState.running;
+      renderControls();
+
+      if (stopwatchState.running) {
+        const startTimestamp = Date.now() - stopwatchState.elapsedTime;
+        stopwatchState.timerId = setInterval(() => {
+          stopwatchState.elapsedTime = Date.now() - startTimestamp;
+          updateStopwatchDisplay();
+        }, 10); // Update rapidly for high precision centiseconds
+      } else {
+        clearInterval(stopwatchState.timerId);
+      }
+    }
+
+    function resetStopwatch() {
+      clearInterval(stopwatchState.timerId);
+      stopwatchState.running = false;
+      stopwatchState.elapsedTime = 0;
+      updateStopwatchDisplay();
+      renderControls();
+    }
+
+    function updateStopwatchDisplay() {
+      if (state.mode !== 'stopwatch') return;
+
+      const totalCentis = Math.floor(stopwatchState.elapsedTime / 10);
+      const centis = totalCentis % 100;
+      const totalSecs = Math.floor(totalCentis / 100);
+      const secs = totalSecs % 60;
+      const mins = Math.floor(totalSecs / 60);
+
+      const mStr = String(mins).padStart(2, '0');
+      const sStr = String(secs).padStart(2, '0');
+      const cStr = String(centis).padStart(2, '0');
+
+      const digits = {
+        hTens: mStr[0], hOnes: mStr[1],
+        mTens: sStr[0], mOnes: sStr[1],
+        sTens: cStr[0], sOnes: cStr[1]
+      };
+
+      if (digits.hTens !== prevDigits.hTens) animateCard('h-tens', digits.hTens);
+      if (digits.hOnes !== prevDigits.hOnes) animateCard('h-ones', digits.hOnes);
+      if (digits.mTens !== prevDigits.mTens) animateCard('m-tens', digits.mTens);
+      if (digits.mOnes !== prevDigits.mOnes) animateCard('m-ones', digits.mOnes);
+      if (digits.sTens !== prevDigits.sTens) animateCard('s-tens', digits.sTens);
+      if (digits.sOnes !== prevDigits.sOnes) animateCard('s-ones', digits.sOnes);
+
+      prevDigits = digits;
+    }
+
+    /* =========================================================================
+       SUB-ENGINE 3: COUNTDOWN TIMER MODULE
+       ========================================================================= */
+    function toggleTimer() {
+      if (timerState.remainingTime <= 0) {
+        timerState.remainingTime = timerState.inputTime;
+      }
+      timerState.running = !timerState.running;
+      renderControls();
+
+      if (timerState.running) {
+        timerState.timerId = setInterval(() => {
+          if (timerState.remainingTime > 0) {
+            timerState.remainingTime--;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timerState.timerId);
+            timerState.running = false;
+            renderControls();
+            triggerAlarmAlert();
+          }
+        }, 1000);
+      } else {
+        clearInterval(timerState.timerId);
+      }
+    }
+
+    function adjustTimerSettings() {
+      // Inline visual adjustments prompter modal
+      const val = prompt("Enter custom countdown timer in seconds (e.g. 600 for 10 minutes):", timerState.inputTime);
+      if (val && !isNaN(val)) {
+        timerState.inputTime = parseInt(val, 10);
+        resetTimer();
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerState.timerId);
+      timerState.running = false;
+      timerState.remainingTime = timerState.inputTime;
+      updateTimerDisplay();
+      renderControls();
+    }
+
+    function updateTimerDisplay() {
+      if (state.mode !== 'timer') return;
+
+      const totalSecs = timerState.remainingTime;
+      const hours = Math.floor(totalSecs / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
+
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const sStr = String(seconds).padStart(2, '0');
+
+      const digits = {
+        hTens: hStr[0], hOnes: hStr[1],
+        mTens: mStr[0], mOnes: mStr[1],
+        sTens: sStr[0], sOnes: sStr[1]
+      };
+
+      if (digits.hTens !== prevDigits.hTens) animateCard('h-tens', digits.hTens);
+      if (digits.hOnes !== prevDigits.hOnes) animateCard('h-ones', digits.hOnes);
+      if (digits.mTens !== prevDigits.mTens) animateCard('m-tens', digits.mTens);
+      if (digits.mOnes !== prevDigits.mOnes) animateCard('m-ones', digits.mOnes);
+      if (digits.sTens !== prevDigits.sTens) animateCard('s-tens', digits.sTens);
+      if (digits.sOnes !== prevDigits.sOnes) animateCard('s-ones', digits.sOnes);
+
+      prevDigits = digits;
+    }
+
+    function triggerAlarmAlert() {
+      // Multi-sound alert sequence
+      let count = 0;
+      const interval = setInterval(() => {
+        playClackSound();
+        count++;
+        if (count >= 10) clearInterval(interval);
+      }, 150);
+    }
+
+    /* =========================================================================
+       SUB-ENGINE 4: POMODORO STATION
+       ========================================================================= */
+    function setPomodoroInterval(type) {
+      pomodoroState.mode = type;
+      clearInterval(pomodoroState.timerId);
+      pomodoroState.running = false;
+
+      if (type === 'work') {
+        pomodoroState.remainingTime = 1500; // 25 mins
+      } else if (type === 'shortBreak') {
+        pomodoroState.remainingTime = 300; // 5 mins
+      } else if (type === 'longBreak') {
+        pomodoroState.remainingTime = 900; // 15 mins
+      }
+
+      updatePomodoroDisplay();
+      renderControls();
+    }
+
+    function togglePomodoro() {
+      pomodoroState.running = !pomodoroState.running;
+      renderControls();
+
+      if (pomodoroState.running) {
+        pomodoroState.timerId = setInterval(() => {
+          if (pomodoroState.remainingTime > 0) {
+            pomodoroState.remainingTime--;
+            updatePomodoroDisplay();
+          } else {
+            clearInterval(pomodoroState.timerId);
+            pomodoroState.running = false;
+            triggerAlarmAlert();
+            // Automatically sequence to next logical state
+            if (pomodoroState.mode === 'work') {
+              setPomodoroInterval('shortBreak');
+            } else {
+              setPomodoroInterval('work');
+            }
+          }
+        }, 1000);
+      } else {
+        clearInterval(pomodoroState.timerId);
+      }
+    }
+
+    function resetPomodoro() {
+      setPomodoroInterval(pomodoroState.mode);
+    }
+
+    function updatePomodoroDisplay() {
+      if (state.mode !== 'pomodoro') return;
+
+      const totalSecs = pomodoroState.remainingTime;
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+
+      const mStr = String(mins).padStart(2, '0');
+      const sStr = String(secs).padStart(2, '0');
+
+      const digits = {
+        hTens: '0', hOnes: '0', // Unused in Pomodoro but visualizer card matches
+        mTens: mStr[0], mOnes: mStr[1],
+        sTens: sStr[0], sOnes: sStr[1]
+      };
+
+      // Ensure Pomodoro Hours are masked clean as spacer 0s
+      if (digits.hTens !== prevDigits.hTens) animateCard('h-tens', digits.hTens);
+      if (digits.hOnes !== prevDigits.hOnes) animateCard('h-ones', digits.hOnes);
+      if (digits.mTens !== prevDigits.mTens) animateCard('m-tens', digits.mTens);
+      if (digits.mOnes !== prevDigits.mOnes) animateCard('m-ones', digits.mOnes);
+      if (digits.sTens !== prevDigits.sTens) animateCard('s-tens', digits.sTens);
+      if (digits.sOnes !== prevDigits.sOnes) animateCard('s-ones', digits.sOnes);
+
+      prevDigits = digits;
+    }
+
+    /* =========================================================================
+       DISPLAY UTILITIES & SETUP CONTROLS
+       ========================================================================= */
+    function handleSizeSlider(val) {
+      state.scale = val / 100;
+      document.getElementById('scale-indicator').textContent = `${val}%`;
+      document.documentElement.style.setProperty('--clock-scale', state.scale);
+      deactivatePresets();
+    }
+
+    function applyPreset(type) {
+      state.activePreset = type;
+      deactivatePresets();
+      
+      const mobileBtn = document.getElementById('preset-mobile');
+      const laptopBtn = document.getElementById('preset-laptop');
+      const monitorBtn = document.getElementById('preset-monitor');
+      const slider = document.getElementById('size-slider');
+
+      if (type === 'mobile') {
+        mobileBtn.className = "py-2.5 px-3 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition";
+        state.scale = 0.55;
+      } else if (type === 'laptop') {
+        laptopBtn.className = "py-2.5 px-3 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition";
+        state.scale = 0.95;
+      } else if (type === 'monitor') {
+        monitorBtn.className = "py-2.5 px-3 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition";
+        state.scale = 1.35;
+      }
+
+      slider.value = Math.round(state.scale * 100);
+      document.getElementById('scale-indicator').textContent = `${slider.value}%`;
+      document.documentElement.style.setProperty('--clock-scale', state.scale);
+    }
+
+    function deactivatePresets() {
+      const btns = ['preset-mobile', 'preset-laptop', 'preset-monitor'];
+      btns.forEach(id => {
+        document.getElementById(id).className = "py-2.5 px-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-zinc-300 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition";
+      });
+    }
+
+    function toggleSecondsVisibility() {
+      state.showSeconds = document.getElementById('toggle-seconds').checked;
+      const secElements = document.querySelectorAll('.seconds-element');
+      
+      if (state.showSeconds || state.mode !== 'clock') {
+        secElements.forEach(el => el.classList.remove('hidden-mode'));
+      } else {
+        secElements.forEach(el => el.classList.add('hidden-mode'));
+      }
+    }
+
+    function toggleTimeFormat() {
+      state.is24H = document.getElementById('toggle-24h').checked;
+      prevDigits = { hTens: '', hOnes: '', mTens: '', mOnes: '', sTens: '', sOnes: '' };
+      updateClock();
+    }
+
+    function toggleGlowLight() {
+      state.backlightOn = document.getElementById('toggle-glow').checked;
+      const glow = document.getElementById('backglow');
+      glow.style.opacity = state.backlightOn ? '1' : '0';
+    }
+
+    // Settings Drawer Controllers
+    function openSettings() {
+      document.getElementById('settings-drawer').classList.remove('translate-x-full');
+      const backdrop = document.getElementById('settings-backdrop');
+      backdrop.classList.remove('hidden');
+      setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+    }
+
+    function closeSettings() {
+      document.getElementById('settings-drawer').classList.add('translate-x-full');
+      const backdrop = document.getElementById('settings-backdrop');
+      backdrop.classList.add('opacity-0');
+      setTimeout(() => backdrop.classList.add('hidden'), 300);
+    }
+
+    // Fullscreen Configuration & Zen Mode
+    function triggerFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen()
+          .then(() => handleFullscreenTransition(true))
+          .catch(err => console.error("Error activating fullscreen: ", err));
+      } else {
+        document.exitFullscreen().then(() => handleFullscreenTransition(false));
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+
+    function handleFullscreenTransition(isFull) {
+      state.isFullscreen = isFull;
+      const topBar = document.getElementById('top-header');
+      const escTip = document.getElementById('fullscreen-esc-tip');
+      const zenIndicator = document.getElementById('zen-indicator');
+
+      // Customize escape tip notification by mode
+      let label = 'Zen Clock Mode';
+      if (state.mode === 'stopwatch') label = 'Zen Stopwatch Running';
+      if (state.mode === 'timer') label = 'Zen Timer Active';
+      if (state.mode === 'pomodoro') label = 'Focus Pomodoro Session';
+      zenIndicator.textContent = label;
+
+      if (isFull) {
+        topBar.classList.add('opacity-0', 'pointer-events-none');
+        escTip.classList.remove('pointer-events-none');
+        escTip.classList.add('opacity-100');
+        closeSettings();
+        document.body.style.cursor = 'none';
+      } else {
+        topBar.classList.remove('opacity-0', 'pointer-events-none');
+        escTip.classList.add('opacity-0', 'pointer-events-none');
+        document.body.style.cursor = 'default';
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      handleFullscreenTransition(!!document.fullscreenElement);
+    });
+
+    // Idle mouse handler in fullscreen
+    let mouseTimer = null;
+    document.addEventListener('mousemove', () => {
+      if (!state.isFullscreen) return;
+      
+      const escTip = document.getElementById('fullscreen-esc-tip');
+      document.body.style.cursor = 'default';
+      escTip.classList.remove('hide-controls');
+      escTip.classList.add('opacity-100');
+
+      clearTimeout(mouseTimer);
+      mouseTimer = setTimeout(() => {
+        if (state.isFullscreen) {
+          document.body.style.cursor = 'none';
+          escTip.classList.add('hide-controls');
+        }
+      }, 2500);
+    });
+
+    // Hotkey triggers
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        triggerFullscreen();
+      }
+      if (e.key === 'Escape' && state.isFullscreen) {
+        exitFullscreen();
+      }
+    });
+
+    document.body.addEventListener('dblclick', (e) => {
+      if (!e.target.closest('button') && !e.target.closest('#settings-drawer') && !e.target.closest('nav')) {
+        triggerFullscreen();
+      }
+    });
+
+    // Clock Tick Engine Instantiation
+    window.onload = function() {
+      lucide.createIcons();
+      applyPreset('monitor'); // Matches user's monitor setup
+
+      // Trigger structural startup numbers values
+      const now = new Date();
+      let h = now.getHours();
+      if (!state.is24H) {
+        h = h % 12;
+        h = h ? h : 12;
+      }
+      const hS = String(h).padStart(2, '0');
+      const mS = String(now.getMinutes()).padStart(2, '0');
+      const sS = String(now.getSeconds()).padStart(2, '0');
+
+      document.querySelector('#h-tens .card-top .digit-text').textContent = hS[0];
+      document.querySelector('#h-tens .card-bottom .digit-text').textContent = hS[0];
+      document.querySelector('#h-ones .card-top .digit-text').textContent = hS[1];
+      document.querySelector('#h-ones .card-bottom .digit-text').textContent = hS[1];
+      
+      document.querySelector('#m-tens .card-top .digit-text').textContent = mS[0];
+      document.querySelector('#m-tens .card-bottom .digit-text').textContent = mS[0];
+      document.querySelector('#m-ones .card-top .digit-text').textContent = mS[1];
+      document.querySelector('#m-ones .card-bottom .digit-text').textContent = mS[1];
+
+      document.querySelector('#s-tens .card-top .digit-text').textContent = sS[0];
+      document.querySelector('#s-tens .card-bottom .digit-text').textContent = sS[0];
+      document.querySelector('#s-ones .card-top .digit-text').textContent = sS[1];
+      document.querySelector('#s-ones .card-bottom .digit-text').textContent = sS[1];
+
+      prevDigits = {
+        hTens: hS[0], hOnes: hS[1],
+        mTens: mS[0], mOnes: mS[1],
+        sTens: sS[0], sOnes: sS[1]
+      };
+
+      // Clock loops every second
+      setInterval(() => {
+        if (state.mode === 'clock') {
+          updateClock();
+        }
+      }, 1000);
+
+      // Render controls on launch
+      renderControls();
+    };
+  </script>
+</body>
+</html>
