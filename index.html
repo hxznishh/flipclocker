@@ -20,7 +20,7 @@
       --divider-color: #000000;
       --accent-color: #3b82f6; 
       --glow-color: rgba(255, 255, 255, 0.03);
-      --clock-scale: 1.2;
+      --clock-scale: 0.95; /* Matches default laptop scale */
     }
 
     body {
@@ -465,7 +465,7 @@
               <i data-lucide="laptop" class="w-4 h-4"></i>
               Laptop
             </button>
-            <button onclick="applyPreset('monitor')" id="preset-monitor" class="py-2.5 px-3 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition">
+            <button onclick="applyPreset('monitor')" id="preset-monitor" class="py-2.5 px-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-zinc-300 font-medium text-xs flex flex-col items-center justify-center gap-1.5 transition">
               <i data-lucide="monitor" class="w-4 h-4"></i>
               Monitor
             </button>
@@ -476,9 +476,9 @@
         <div class="bg-neutral-900/60 p-4 rounded-2xl border border-neutral-900 space-y-3">
           <div class="flex justify-between items-center">
             <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Fine Scale Tuning</span>
-            <span id="scale-indicator" class="text-xs font-mono text-blue-500 font-bold">120%</span>
+            <span id="scale-indicator" class="text-xs font-mono text-blue-500 font-bold">95%</span>
           </div>
-          <input type="range" id="size-slider" min="40" max="180" value="120" oninput="handleSizeSlider(this.value)" class="w-full accent-blue-500 bg-neutral-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+          <input type="range" id="size-slider" min="40" max="180" value="95" oninput="handleSizeSlider(this.value)" class="w-full accent-blue-500 bg-neutral-800 h-1.5 rounded-lg appearance-none cursor-pointer">
           <p class="text-[10px] text-zinc-500 leading-normal">
             Drag the slider to adjust overall scale. Ensures elements never stretch or clip past screen boundaries.
           </p>
@@ -497,13 +497,14 @@
             </label>
           </div>
 
+          <!-- Defaulted to checked (24-Hour Active) -->
           <div class="flex justify-between items-center py-2 border-b border-neutral-900" id="setting-format-row">
             <div>
               <span class="text-sm font-medium text-zinc-200 block">24-Hour Clock</span>
               <span class="text-xs text-zinc-500">Switch from standard 12H system</span>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="toggle-24h" onchange="toggleTimeFormat()" class="sr-only peer">
+              <input type="checkbox" id="toggle-24h" checked onchange="toggleTimeFormat()" class="sr-only peer">
               <div class="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
             </label>
           </div>
@@ -540,13 +541,13 @@
     // System Config state
     const state = {
       mode: 'clock', // clock, stopwatch, timer, pomodoro
-      is24H: false,
+      is24H: true, // Configured to TRUE by default
       showSeconds: true,
-      scale: 1.2,
+      scale: 0.95, // Default scale configured to laptop
       soundMuted: false,
       backlightOn: true,
       isFullscreen: false,
-      activePreset: 'monitor'
+      activePreset: 'laptop' // Default preset configured to laptop
     };
 
     // Card Digits tracking
@@ -1209,9 +1210,9 @@
     // Clock Tick Engine Instantiation
     window.onload = function() {
       lucide.createIcons();
-      applyPreset('monitor'); // Matches user's monitor setup
+      applyPreset('laptop'); // Defaults to elegant laptop size preset
 
-      // Trigger structural startup numbers values
+      // Trigger structural startup numbers values in 24H mode
       const now = new Date();
       let h = now.getHours();
       if (!state.is24H) {
