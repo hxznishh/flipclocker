@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlipClock by Kajol</title>
+  <title>Flipclocker by Kajol</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -560,7 +560,7 @@
       is24H: true, // Configured to TRUE by default
       showSeconds: true,
       scale: 0.95, // Default scale configured to laptop
-      soundMuted: false,
+      soundMuted: true, // Configured to MUTED/OFF by default as requested
       backlightOn: true,
       isFullscreen: false,
       activePreset: 'laptop' // Default preset configured to laptop
@@ -598,7 +598,7 @@
     // Global Alarm Ringing Loop Reference
     let alarmIntervalId = null;
 
-    // Web Audio Synthesizer: Procedural mechanical click sound (Enhanced & Much Louder)
+    // Web Audio Synthesizer: Procedural mechanical click sound (Enhanced & Louder)
     let audioCtx = null;
     function playClackSound() {
       if (state.soundMuted) return;
@@ -657,7 +657,7 @@
       }
     }
 
-    // High Pitch Electronic Alarm Beeper/Chime (Louder & Piercing)
+    // High Quality Melodic Digital Bell Chime (Rich, Crystal-Clear & Pleasant)
     function playAlarmBeep() {
       if (state.soundMuted) return;
       try {
@@ -670,39 +670,39 @@
 
         const now = audioCtx.currentTime;
 
-        // Tone A (Clear alarm chime)
-        const oscA = audioCtx.createOscillator();
-        const gainA = audioCtx.createGain();
-        oscA.type = 'sine';
-        oscA.frequency.setValueAtTime(880, now); // Standard concert pitch bright chime
-        
-        gainA.gain.setValueAtTime(0.001, now);
-        gainA.gain.exponentialRampToValueAtTime(0.9, now + 0.04); // Louder ring out
-        gainA.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        // Dynamic C-Major Chord components for a high-end, elegant acoustic bell chime
+        const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        const volumes = [0.4, 0.3, 0.3, 0.45]; 
 
-        // Tone B (Harmonious bright overtone)
-        const oscB = audioCtx.createOscillator();
-        const gainB = audioCtx.createGain();
-        oscB.type = 'sine';
-        oscB.frequency.setValueAtTime(1175, now); // D6 note chime
-        
-        gainB.gain.setValueAtTime(0.001, now);
-        gainB.gain.exponentialRampToValueAtTime(0.6, now + 0.04);
-        gainB.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        // Sound Compression Bus to prevent clipping while maximizing acoustic presence
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-8, now);
+        compressor.knee.setValueAtTime(12, now);
+        compressor.ratio.setValueAtTime(12, now);
+        compressor.attack.setValueAtTime(0, now);
+        compressor.release.setValueAtTime(0.25, now);
+        compressor.connect(audioCtx.destination);
 
-        oscA.connect(gainA);
-        gainA.connect(audioCtx.destination);
+        frequencies.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
 
-        oscB.connect(gainB);
-        gainB.connect(audioCtx.destination);
+          osc.type = 'sine'; // Sine waves provide a pure, bell-like organic sound
+          osc.frequency.setValueAtTime(freq, now);
 
-        oscA.start(now);
-        oscA.stop(now + 0.5);
+          // Rich Bell Decay structure
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(volumes[idx], now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2); // Smooth trailing ring
 
-        oscB.start(now);
-        oscB.stop(now + 0.5);
+          osc.connect(gain);
+          gain.connect(compressor);
+
+          osc.start(now);
+          osc.stop(now + 1.3);
+        });
       } catch (err) {
-        console.warn("Alarm synthesize stalled", err);
+        console.warn("Alarm synthesis stalled", err);
       }
     }
 
@@ -960,7 +960,7 @@
 
       const digits = {
         hTens: mStr[0], hOnes: mStr[1],
-        mTens: sStr[0], mOnes: sStr[1],
+        mTens: sStr[0], mOnes: mStr[1],
         sTens: cStr[0], sOnes: cStr[1]
       };
 
@@ -1054,7 +1054,7 @@
       // Instantly start ringing
       playAlarmBeep();
       
-      // Pulse beep chime pattern every 1.5 seconds
+      // Pulse bright bell chime sequence every 1.5 seconds for incredible clarity
       alarmIntervalId = setInterval(() => {
         playAlarmBeep();
       }, 1500);
@@ -1324,6 +1324,15 @@
     window.onload = function() {
       lucide.createIcons();
       applyPreset('laptop'); // Defaults to elegant laptop size preset
+
+      // Handle default soundMuted: true initialization for the UI toggle state
+      if (state.soundMuted) {
+        const icon = document.getElementById('audio-icon');
+        if (icon) icon.setAttribute('data-lucide', 'volume-x');
+        const audioBtn = document.getElementById('audio-toggle');
+        if (audioBtn) audioBtn.classList.add('opacity-60');
+        lucide.createIcons();
+      }
 
       // Trigger structural startup numbers values in 24H mode
       const now = new Date();
